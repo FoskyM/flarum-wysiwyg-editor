@@ -26,9 +26,9 @@
             "title": "Wysiwyg Editor",
             "category": "",
             "icon": {
-                "name": "",
-                "color": "",
-                "backgroundColor": ""
+                "name": "fas fa-pen-fancy",
+                "color": "#ffffff",
+                "backgroundColor": "#2191f3"
             }
         },
         "flarum-cli": {
