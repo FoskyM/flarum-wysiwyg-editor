@@ -1,0 +1,3 @@
+/*! WysiBB v1.5.1 2014-03-26 
+    Author: Vadim Dobroskok
+ */

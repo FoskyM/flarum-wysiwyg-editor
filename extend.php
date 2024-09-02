@@ -25,6 +25,10 @@ return [
 
     (new Extend\Formatter)
         ->configure(function (Configurator $config) {
-            $config->javascript->exports = ['parse', 'preview'];
+            $config->javascript->exports = ['parse', 'preview', 'tagsConfig', 'xsl', 'xslt'];
+            // $tags = [];
+            // foreach ($config->tags as $tagName => $tag) {
+            //     $tags[$tagName] = $tag->template->__toString();
+            // }
         }),
 ];
