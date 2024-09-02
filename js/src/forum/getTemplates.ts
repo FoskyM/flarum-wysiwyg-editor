@@ -1,7 +1,14 @@
-export default function getTemplates() {
+export type Template = {
+  name: string,
+  parentName: string,
+  parentClass: string[],
+  content: string,
+  attributes: string[],
+}
+export default function getTemplates(): Template[] {
   // @ts-ignore
   let xsl = (new DOMParser).parseFromString(s9e.TextFormatter.xsl, 'text/xml');
-  let templates: any = [];
+  let templates: Template[] = [];
   // xsl:stylesheet > xsl:template
   let root = xsl.documentElement;
   root.querySelectorAll('template').forEach((template: any) => {
@@ -30,7 +37,7 @@ export default function getTemplates() {
       let name = attr.slice(2, -1);
       attributes.push(name);
     });
-    
+
     templates.push({
       name: match,
       parentName,
