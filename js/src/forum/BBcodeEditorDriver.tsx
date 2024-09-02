@@ -6,24 +6,25 @@ import styleSelectedText from 'flarum/common/utils/styleSelectedText';
 import type EditorDriverInterface from 'flarum/common/utils/EditorDriverInterface';
 import { type EditorDriverParams } from 'flarum/common/utils/EditorDriverInterface';
 
-import getTemplates from './getTemplates';
+import getTemplates, { Template } from './getTemplates';
+import { BindEvent, GlobalSCEditor, RangeHelper, SCEditor } from '../@types/sceditor';
 
 export default class BBcodeEditorDriver implements EditorDriverInterface {
   el: HTMLTextAreaElement;
   tempEl: HTMLTextAreaElement;
   view: any = null;
-  params: any = null;
-  instance: any = null;
-  editor: any = null;
-  rangeHelper: any = null;
-  extraBBcode: any = null;
+  params: EditorDriverParams | null = null;
+  instance: SCEditor | null = null;
+  editor: GlobalSCEditor | null = null;
+  rangeHelper: RangeHelper | null = null;
+  extraBBcode: Template[] = [];
   s9ePreview: HTMLDivElement;
 
   constructor(dom: HTMLElement, params: EditorDriverParams) {
-    this.tempEl = document.createElement('textarea');
+    //这里的EL应该是可以直接赋值的吧
+    this.el = this.tempEl = document.createElement('textarea');
     this.s9ePreview = document.createElement('div');
     this.extraBBcode = getTemplates();
-
     this.build(dom, params);
   }
 
@@ -144,7 +145,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     cssClasses.forEach((className: string) => this.instance?.css(className));
 
     let composer = document.querySelector('#composer');
-    let height = composer?.clientHeight - 120;
+    let height = composer?.clientHeight || 0 - 120;
     this.instance.width('100%');
     this.instance.height(height);
     const root = document.documentElement;
@@ -153,9 +154,9 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     this.instance.css('body {background-color: ' + bodyBg + '; color: ' + controlColor + ' !important;}');
     this.instance.focus();
 
-    let iframe = this.instance.getContentAreaContainer();
+    let iframe = this.instance.getContentAreaContainer() as HTMLIFrameElement;
     let parent = iframe.parentElement;
-    this.el = parent.querySelector('textarea');
+    this.el = parent!.querySelector('textarea') as HTMLTextAreaElement;
 
     const callInputListeners = (e: Event) => {
       this.params?.inputListeners.forEach((listener: any) => {
@@ -169,14 +170,14 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     this.el.onclick = callInputListeners;
     this.el.onkeyup = callInputListeners;
 
-    ['keyup', 'keydown', 'keypress', 'blur', 'focus'].forEach((event: string) => {
-      this.instance.bind(event, (e: Event) => {
-        params.oninput(this.instance.val());
+    (['keyup', 'keydown', 'keypress', 'blur', 'focus'] as BindEvent[]).forEach((event: BindEvent) => {
+      this.instance!.bind(event, (e: Event) => {
+        params.oninput(this.instance!.val());
         callInputListeners(e);
       });
     });
 
-    let iframeDoc = iframe.contentDocument;
+    let iframeDoc = iframe.contentDocument!;
     let iframeBody = iframeDoc.body;
     iframeBody.classList.add('bbcode-editor-content');
     iframeBody.classList.add('Post-body');
@@ -211,7 +212,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
    * @return {Array}
    */
   getSelectionRange() {
-    let range = this.rangeHelper.selectedRange();
+    let range = this.rangeHelper!.selectedRange();
 
     return [range.startOffset, range.endOffset];
   }
@@ -220,7 +221,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
    * Get (at most) the last N characters from the current "text block".
    */
   getLastNChars(n: number) {
-    const value = this.instance.val();
+    const value = this.instance!.val();
     console.log(value);
 
     return value.slice(Math.max(0, this.getSelectionRange()[0] - n), this.getSelectionRange()[0]);
@@ -258,7 +259,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
   insertBetween(selectionStart: number, selectionEnd: number, text: string) {
     this.setSelectionRange(selectionStart, selectionEnd);
 
-    this.instance.insert(text);
+    this.instance!.insert(text);
   }
 
   /**
@@ -284,7 +285,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     range.setStart(this.el, start);
     range.setEnd(this.el, end);
 
-    this.rangeHelper.selectRange(range);
+    this.rangeHelper!.selectRange(range);
     this.focus();
   }
 
@@ -305,7 +306,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
   }
 
   getCaretCoordinates(position: number) {
-    const isSourceMode = this.instance.sourceMode();
+    const isSourceMode = this.instance!.sourceMode();
     if (isSourceMode) {
       const relCoords = getCaretCoordinates(this.el, position);
 
@@ -314,9 +315,13 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
         left: relCoords.left,
       };
     }
-    let node = this.instance.currentNode();
+    let node = this.instance!.currentNode();
+    if (!node) return {
+      top: 0,
+      left: 0
+    }
     if (node.nodeType === 3) {
-      let parent = node.parentNode;
+      let parent = node.parentNode! as HTMLElement;
       let width = this.getTextNodeWidth(node);
       let rect = parent.getBoundingClientRect();
       let left = rect.left + width;
@@ -327,7 +332,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
         top,
       };
     }
-    const rect = node.getBoundingClientRect();
+    const rect = (node as HTMLElement).getBoundingClientRect();
     const left = rect.left + rect.width;
     const top = rect.top + rect.height;
     console.log(node, left, top);
@@ -338,14 +343,14 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
   }
 
   focus() {
-    this.instance.focus();
+    this.instance!.focus();
   }
 
   destroy() {
-    this.instance.destroy();
+    this.instance!.destroy();
   }
 
   disabled(disabled: boolean) {
-    this.instance.readOnly(disabled);
+    this.instance!.readOnly(disabled);
   }
 }
