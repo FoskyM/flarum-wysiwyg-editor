@@ -63,8 +63,11 @@ export default function applyEditor() {
 
   extend(Composer.prototype, 'updateHeight', function () {
     if (!instance) return;
-    let composer = document.querySelector('#composer');
-    let height = composer?.clientHeight - 120;
+    let padding: number = parseInt($('.Composer-content').css('padding-top').replace('px', '')) || 0;
+    let headerHeight: number = $('.ComposerBody-header').outerHeight() || 0;
+    let footerHeight: number = $('.Composer-footer').outerHeight() || 0;
+    let paddingFooter: number = parseInt($('.Composer-footer').css('padding-bottom').replace('px', '')) || 0;
+    let height: number = ($('.Composer').outerHeight() || 0) - padding - headerHeight - footerHeight - paddingFooter;
     instance.height(height);
   });
 }

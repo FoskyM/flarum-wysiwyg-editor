@@ -144,10 +144,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     const cssClasses = params.classNames || [];
     cssClasses.forEach((className: string) => this.instance?.css(className));
 
-    let composer = document.querySelector('#composer');
-    let height = composer?.clientHeight || 0 - 120;
     this.instance.width('100%');
-    this.instance.height(height);
     const root = document.documentElement;
     const bodyBg = getComputedStyle(root).getPropertyValue('--body-bg').trim();
     const controlColor = getComputedStyle(root).getPropertyValue('--control-color').trim();
