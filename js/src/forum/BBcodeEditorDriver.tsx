@@ -42,7 +42,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     this.params = params;
     // @ts-ignore
     let sceditor = window.sceditor;
-    this.extraBBcode.forEach((template: any) => {
+    this.extraBBcode.forEach((template) => {
       let name = template.name.toLowerCase();
       if (sceditor.formats.bbcode.get(name) !== null) return;
       if (name.indexOf('xsl:') > -1) return;

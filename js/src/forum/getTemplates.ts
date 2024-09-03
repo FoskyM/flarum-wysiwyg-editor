@@ -11,7 +11,7 @@ export default function getTemplates(): Template[] {
   let templates: Template[] = [];
   // xsl:stylesheet > xsl:template
   let root = xsl.documentElement;
-  root.querySelectorAll('template').forEach((template: any) => {
+  root.querySelectorAll('template').forEach((template) => {
     let match = template.getAttribute('match');
     if (match === null || match.indexOf('|') > -1) return;
     let content = template.innerHTML;
