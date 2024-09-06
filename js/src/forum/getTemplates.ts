@@ -1,9 +1,42 @@
+import XSLTMatchUtil from "../common/helper/XLSTMatchUtil";
+import { transformTemplate } from "./util/templateReplaceUtil";
+
 export type Template = {
   name: string,
   parentName: string,
-  parentClass: string[],
   content: string,
-  attributes: string[],
+  selfClose: boolean,
+  matching: XSLTMatchUtil
+}
+function closeTest(tagName: string) {
+  //@ts-ignore
+  const tagDef: any = s9e.TextFormatter.tagsConfig[tagName.toUpperCase()];
+  if (!tagDef) return false;
+
+  const attributeStr = Object.keys(tagDef.attributes).map(attr => `${attr}=0 `).join(" ");
+  const testStrClose = `[${tagName} ${attributeStr}][/${tagName}]`
+  const testStrOpen = `[${tagName} ${attributeStr}]`
+  //@ts-ignore
+  const testClose: string = s9e.TextFormatter.parse(testStrClose);
+  //@ts-ignore
+  const testOpen: string = s9e.TextFormatter.parse(testStrOpen);
+
+
+  if (testClose.replace(`<e>[/${tagName}]</e>`, "") !== testOpen) return true;
+  return false;
+}
+
+function isBB(tagName: string) {
+  //@ts-ignore
+  const tagDef: any = s9e.TextFormatter.tagsConfig[tagName.toUpperCase()];
+  if (!tagDef) return false;
+
+  const attributeStr = [tagName].concat(Object.keys(tagDef.attributes).map(attr => `${attr}=0 `)).join(" ");
+  const testStr = `[${attributeStr}][/${tagName}]`;
+  //@ts-ignore
+  const testClose: string = s9e.TextFormatter.parse(testStr);
+
+  return testClose.includes(`<${tagName.toUpperCase()}`);
 }
 export default function getTemplates(): Template[] {
   // @ts-ignore
@@ -11,39 +44,23 @@ export default function getTemplates(): Template[] {
   let templates: Template[] = [];
   // xsl:stylesheet > xsl:template
   let root = xsl.documentElement;
-  root.querySelectorAll('template').forEach((template: any) => {
+  (Array.from(root.getElementsByTagName("xsl:template")) as HTMLElement[]).forEach((template) => {
     let match = template.getAttribute('match');
     if (match === null || match.indexOf('|') > -1) return;
+    if (!isBB(match)) return;
     let content = template.innerHTML;
-    // <xsl:apply-templates xmlns:xsl="http://www.w3.org/1999/XSL/Transform"/>
-    content = content.replace('<xsl:apply-templates xmlns:xsl="http://www.w3.org/1999/XSL/Transform"/>', '{@Tcontent}');
-    // "<div class="xx2see login"><div class="xx2see_title">登录可见内容</div></div>"
+
+
     // parentName 为 template 的根节点名
-    let parentName = template.firstElementChild?.tagName;
-    let parentClass = template.firstElementChild?.getAttribute('class');
-    // 只保留没有 {} 的类名
-    if (parentClass) {
-      parentClass = parentClass.split(' ');
-      parentClass = parentClass.filter((name: string) => {
-        return name.indexOf('{') === -1 && name.indexOf('}') === -1;
-      });
-    } else {
-      parentClass = [];
-    }
-    // 取出 @* 属性
-    let attributes = [] as any;
-    let matches = content.match(/\{@(.*?)\}/g) || [];
-    matches.forEach((attr: any) => {
-      let name = attr.slice(2, -1);
-      attributes.push(name);
-    });
+    let parentName = template.firstElementChild?.tagName || "";
+    if (!parentName) return;
 
     templates.push({
       name: match,
       parentName,
-      parentClass,
       content,
-      attributes,
+      selfClose: closeTest(match),
+      matching: new XSLTMatchUtil(template)
     });
   });
   return templates;

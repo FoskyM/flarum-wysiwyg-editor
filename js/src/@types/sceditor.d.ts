@@ -556,6 +556,7 @@ interface SCEditor {
     bbcode: {
       set(name: string, bbcode: BBCode): any
       get(name: string): BBCode
+      remove(name: string): any
     }
   }
   BBCodeParser: {
