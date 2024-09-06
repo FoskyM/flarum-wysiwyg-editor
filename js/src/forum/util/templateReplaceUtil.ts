@@ -14,6 +14,7 @@ export function transformTemplate(templates: HTMLElement) {
 const basicTags = "B|DEL|EM|H1|H2|H3|H4|H5|H6|I|INS|LI|S|STRONG|SUB|SUP|TABLE|TBODY|THEAD|TR|U|p";
 function basicTemplates(document: Document) {
     return basicTags.split("|").map(tag => {
+        if (tag == 'p') return;
         const smallTag = tag.toLowerCase();
         const template = document.createElement("xsl:template");
         template.setAttribute("match", `${tag}`);

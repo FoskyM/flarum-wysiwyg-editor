@@ -11,12 +11,13 @@ export function format(template: Template) {
                 DEBUG && console.log("❌Template does not match", template.name);
                 return content;
             }
-            const attributeStr = Object.keys(attributes).filter(k => k != "@template").map((key: string) => `${key}=${attributes[key]}`).join(' ');
+            const attributeStr = Object.keys(attributes).filter(k => k != "@template" && k != "@pattern").map((key: string) => `${key}=${attributes[key]}`).join(' ');
             const closingTag = template.selfClose ? '' : `[/${template.name.toUpperCase()}]`;
+            
+            content = (new RegExp(attributes['@pattern'], 'img').exec(content) || ["", content])[1] || "";
+            attributes['@template'] = content;
             DEBUG && console.log("✅Match", attributes, content);
 
-            attributes['@template'] = content;
-            
             return `[${template.name.toUpperCase()} ${attributeStr}]${attributes['@template'] || ""}${closingTag}`;
         }
         DEBUG && console.log("❓Missing tag", content);

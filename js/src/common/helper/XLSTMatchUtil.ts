@@ -3,11 +3,40 @@ class IfContext {
     debug: number = gdebug++;
     attributes: Record<string, string> = {};
     rejected: boolean = false;
+    beforeTemplate: boolean = true;
+
+    templatePatternBefore: string[] = [];
+    templatePatternAfter: string[] = [];
+
+    content(content: string) {
+        if (this.beforeTemplate) {
+            this.templatePatternBefore.push(content);
+        } else {
+            this.templatePatternAfter.push(content);
+        }
+    }
+    pattern() {
+        return "^" +
+            this.templatePatternBefore.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*?") +
+            "([^]*)" +
+            this.templatePatternAfter.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*?");
+    }
     merge(newContext: IfContext) {
         if (newContext.isRejected()) return
         Object.keys(newContext.attributes).forEach(key => {
             this.attributes[key] = newContext.attributes[key];
         });
+
+        if (this.beforeTemplate) {
+            newContext.templatePatternBefore.forEach(t => this.templatePatternBefore.push(t));
+            if (!newContext.beforeTemplate) {
+                newContext.templatePatternAfter.forEach(t => this.templatePatternAfter.push(t));
+                this.beforeTemplate = false;
+            }
+        } else {
+            newContext.templatePatternBefore.forEach(t => this.templatePatternAfter.push(t));
+            newContext.templatePatternAfter.forEach(t => this.templatePatternAfter.push(t));
+        }
     }
     attr(name: string) {
         return this.attributes[name];
@@ -67,6 +96,7 @@ export default class XSLTMatchUtil {
         const context = new IfContext();
         this.match(node, this.template.firstChild as HTMLElement, context);
         if (context.isRejected()) return false;
+        context.setAttr("@pattern", context.pattern());
         return context.attributes;
     }
     match(root: HTMLElement, templateRoot: HTMLElement, context: IfContext, skipChildren: boolean = false): any {
@@ -221,10 +251,13 @@ export default class XSLTMatchUtil {
                             newRootChild.shift();
                             newTemplateChild.shift();
                         }
+                        context.content(templateContent);
                         this.processChildren(newRootChild, newTemplateChild, newRootIndex, newTemplateIndex, context);
                     } else {
                         context.reject();
                     }
+                } else {
+                    context.content(rootContent);
                 }
             } else {
                 //检查元素是否匹配，否：拒绝当前context并返回
@@ -277,10 +310,12 @@ export default class XSLTMatchUtil {
             if (match) {
                 context.setAttr(match[1], extract_text(root));
             }
+            context.content(extract_text(root));
             //对于这个自闭合标签，我们不需要再处理其子节点
             return false;
         }
         if (nodeName == 'xsl:apply-templates') {
+            context.beforeTemplate = false;
             context.setAttr('@template', extract_text(root));
             //模板标签不需要处理子节点
             return false;
