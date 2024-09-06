@@ -17,7 +17,7 @@ function basicTemplates(document: Document) {
         const smallTag = tag.toLowerCase();
         const template = document.createElement("xsl:template");
         template.setAttribute("match", `${tag}`);
-        template.innerHTML = `<${smallTag} ><xsl:apply-templates/></${smallTag}>`;
+        template.innerHTML = `<${smallTag}><xsl:apply-templates/></${smallTag}>`;
         document.firstChild?.appendChild(template);
     });
 }

@@ -9,6 +9,7 @@ import { type EditorDriverParams } from 'flarum/common/utils/EditorDriverInterfa
 import getTemplates, { Template } from './getTemplates';
 import { BindEvent, GlobalSCEditor, RangeHelper, SCEditor } from '../@types/sceditor';
 import { makeWrapTextarea } from './util/textareaStyler';
+import { format, html } from './util/bbcodeFormatUtil';
 
 const ORIGINAL_TAGS = ['b', 'i', 'u', 's', 'sub', 'sup', 'font', 'size', 'color', 'ul',
   'list', 'ol', 'li', '*', 'table', 'tr', 'th', 'td', 'emoticon', 'hr', 'img', 'url',
@@ -61,35 +62,10 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
         },
         allowsEmpty: true,
         isSelfClosing: template.selfClose,
-        format: function (elm: HTMLElement, content: string) {
-          console.log("✨H->B", elm, content);
-          if (elm.getAttribute('data-template-match-name') === template.name.toLowerCase()) {
-            const attributes = template.matching.matchAttributes(elm);
-            if (attributes === false) {
-              return content;
-            }
-            const attributeStr = Object.keys(attributes).filter(k => k != "@template").map((key: string) => `${key}=${attributes[key]}`).join(' ');
-            const closingTag = template.selfClose ? '' : `[/${template.name.toUpperCase()}]`;
-            attributes['@template'] = content;
-            return `[${template.name.toUpperCase()} ${attributeStr}]${attributes['@template'] || ""}${closingTag}`;
-          }
-          return content;
-        },
-        html: (token: any, attrs: any, content: string) => {
-          console.log("🎈B->H", token, content);
-          let val = token.val + "FLAT_WYSIWYG_CONTENT_PLACEHOLDER";
-          if (token.closing?.val) {
-            val += token.closing.val;
-          }
-          // @ts-ignore
-          s9e.TextFormatter.preview(val, $('.bbcode-editor-preview')[0]);
-          let html = $(this.s9ePreview).first().children().first().html();
-          $(this.s9ePreview).html("");
-          return html.replace(/FLAT_WYSIWYG_CONTENT_PLACEHOLDER/g, content);
-        },
+        format: format(template),
+        html: html(template, this.s9ePreview)
       });
     });
-
     sceditor.create(this.tempEl, {
       format: 'bbcode',
       style: '/assets/extensions/foskym-wysiwyg-editor/content.min.css',
@@ -116,7 +92,8 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     this.instance.focus();
 
     let iframe = this.instance.getContentAreaContainer() as HTMLIFrameElement;
-    let parent = iframe.parentElement;
+    this.tempEl = $(iframe.parentElement!).find("textarea")[0];
+
     const callInputListeners = (e: Event) => {
       this.params?.inputListeners.forEach((listener: any) => {
         listener.call(iframe);

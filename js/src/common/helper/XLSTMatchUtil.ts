@@ -203,8 +203,8 @@ export default class XSLTMatchUtil {
             //  -1 文本节点特判
             if (rootNew.nodeName.toLowerCase() == "#text" && templateNew.nodeName.toLowerCase() == "#text") {
                 // 遵从dom渲染规则，多个空格合并为一个
-                const templateContent = templateNew.textContent?.replace(/ \s+/ig, " ") || "";
-                const rootContent = rootNew.textContent?.replace(/ \s+/ig, " ") || "";
+                const templateContent = (templateNew.textContent?.replace(/ \s+/ig, " ") || "").trim();
+                const rootContent = (rootNew.textContent?.replace(/ \s+/ig, " ") || "").trim();
 
                 if (rootContent != templateContent) {
                     if (rootContent && rootContent.startsWith(templateContent)) {

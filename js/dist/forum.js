@@ -3429,8 +3429,8 @@ var XSLTMatchUtil = /*#__PURE__*/function () {
       if (rootNew.nodeName.toLowerCase() == "#text" && templateNew.nodeName.toLowerCase() == "#text") {
         var _templateNew$textCont, _rootNew$textContent;
         // 遵从dom渲染规则，多个空格合并为一个
-        var templateContent = ((_templateNew$textCont = templateNew.textContent) == null ? void 0 : _templateNew$textCont.replace(/ \s+/ig, " ")) || "";
-        var rootContent = ((_rootNew$textContent = rootNew.textContent) == null ? void 0 : _rootNew$textContent.replace(/ \s+/ig, " ")) || "";
+        var templateContent = (((_templateNew$textCont = templateNew.textContent) == null ? void 0 : _templateNew$textCont.replace(/ \s+/ig, " ")) || "").trim();
+        var rootContent = (((_rootNew$textContent = rootNew.textContent) == null ? void 0 : _rootNew$textContent.replace(/ \s+/ig, " ")) || "").trim();
         if (rootContent != templateContent) {
           if (rootContent && rootContent.startsWith(templateContent)) {
             var _newTemplateChild = d_clone(templateChild);
@@ -3549,6 +3549,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var textarea_caret__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(textarea_caret__WEBPACK_IMPORTED_MODULE_2__);
 /* harmony import */ var _getTemplates__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./getTemplates */ "./src/forum/getTemplates.ts");
 /* harmony import */ var _util_textareaStyler__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./util/textareaStyler */ "./src/forum/util/textareaStyler.ts");
+/* harmony import */ var _util_bbcodeFormatUtil__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./util/bbcodeFormatUtil */ "./src/forum/util/bbcodeFormatUtil.ts");
+
 
 
 
@@ -3601,37 +3603,8 @@ var BBcodeEditorDriver = /*#__PURE__*/function () {
         }, _tags),
         allowsEmpty: true,
         isSelfClosing: template.selfClose,
-        format: function format(elm, content) {
-          console.log("✨H->B", elm, content);
-          if (elm.getAttribute('data-template-match-name') === template.name.toLowerCase()) {
-            var attributes = template.matching.matchAttributes(elm);
-            if (attributes === false) {
-              return content;
-            }
-            var attributeStr = Object.keys(attributes).filter(function (k) {
-              return k != "@template";
-            }).map(function (key) {
-              return key + "=" + attributes[key];
-            }).join(' ');
-            var closingTag = template.selfClose ? '' : "[/" + template.name.toUpperCase() + "]";
-            attributes['@template'] = content;
-            return "[" + template.name.toUpperCase() + " " + attributeStr + "]" + (attributes['@template'] || "") + closingTag;
-          }
-          return content;
-        },
-        html: function html(token, attrs, content) {
-          var _token$closing;
-          console.log("🎈B->H", token, content);
-          var val = token.val + "FLAT_WYSIWYG_CONTENT_PLACEHOLDER";
-          if ((_token$closing = token.closing) != null && _token$closing.val) {
-            val += token.closing.val;
-          }
-          // @ts-ignore
-          s9e.TextFormatter.preview(val, $('.bbcode-editor-preview')[0]);
-          var html = $(_this.s9ePreview).first().children().first().html();
-          $(_this.s9ePreview).html("");
-          return html.replace(/FLAT_WYSIWYG_CONTENT_PLACEHOLDER/g, content);
-        }
+        format: (0,_util_bbcodeFormatUtil__WEBPACK_IMPORTED_MODULE_5__.format)(template),
+        html: (0,_util_bbcodeFormatUtil__WEBPACK_IMPORTED_MODULE_5__.html)(template, _this.s9ePreview)
       });
     });
     sceditor.create(this.tempEl, {
@@ -3660,7 +3633,7 @@ var BBcodeEditorDriver = /*#__PURE__*/function () {
     this.instance.css('body {background-color: ' + bodyBg + '; color: ' + controlColor + ' !important;}');
     this.instance.focus();
     var iframe = this.instance.getContentAreaContainer();
-    var parent = iframe.parentElement;
+    this.tempEl = $(iframe.parentElement).find("textarea")[0];
     var callInputListeners = function callInputListeners(e) {
       var _this$params;
       (_this$params = _this.params) == null || _this$params.inputListeners.forEach(function (listener) {
@@ -4028,7 +4001,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var flarum_forum_app__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! flarum/forum/app */ "flarum/forum/app");
 /* harmony import */ var flarum_forum_app__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(flarum_forum_app__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var _applyEditor__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./applyEditor */ "./src/forum/applyEditor.tsx");
-/* harmony import */ var _util_templateReplaceUtil__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./util/templateReplaceUtil */ "./src/forum/util/templateReplaceUtil.tsx");
+/* harmony import */ var _util_templateReplaceUtil__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./util/templateReplaceUtil */ "./src/forum/util/templateReplaceUtil.ts");
 
 
 
@@ -4040,10 +4013,67 @@ flarum_forum_app__WEBPACK_IMPORTED_MODULE_0___default().initializers.add('foskym
 
 /***/ }),
 
-/***/ "./src/forum/util/templateReplaceUtil.tsx":
-/*!************************************************!*\
-  !*** ./src/forum/util/templateReplaceUtil.tsx ***!
-  \************************************************/
+/***/ "./src/forum/util/bbcodeFormatUtil.ts":
+/*!********************************************!*\
+  !*** ./src/forum/util/bbcodeFormatUtil.ts ***!
+  \********************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   format: () => (/* binding */ format),
+/* harmony export */   html: () => (/* binding */ html)
+/* harmony export */ });
+var DEBUG = true;
+function format(template) {
+  return function (elm, content) {
+    console.log("✨H->B", elm, content);
+    if (elm.getAttribute('data-template-match-name') === template.name.toLowerCase()) {
+      var attributes = template.matching.matchAttributes(elm);
+      if (attributes === false) {
+        DEBUG && console.log("❌Template does not match", template.name);
+        return content;
+      }
+      var attributeStr = Object.keys(attributes).filter(function (k) {
+        return k != "@template";
+      }).map(function (key) {
+        return key + "=" + attributes[key];
+      }).join(' ');
+      var closingTag = template.selfClose ? '' : "[/" + template.name.toUpperCase() + "]";
+      DEBUG && console.log("✅Match", attributes, content);
+      attributes['@template'] = content;
+      return "[" + template.name.toUpperCase() + " " + attributeStr + "]" + (attributes['@template'] || "") + closingTag;
+    }
+    DEBUG && console.log("❓Missing tag", content);
+    return content;
+  };
+}
+function html(template, preViewElem) {
+  return function (token, attrs, content) {
+    var _token$closing;
+    console.log("🎈B->H", token, content);
+    var val = token.val + "FLAT_WYSIWYG_CONTENT_PLACEHOLDER";
+    if ((_token$closing = token.closing) != null && _token$closing.val) {
+      val += token.closing.val;
+    }
+    // @ts-ignore
+    s9e.TextFormatter.preview(val, preViewElem);
+    var html = $(preViewElem).html();
+    $(preViewElem).html("");
+    if (html.startsWith("<p>") && html.endsWith("</p>")) {
+      html = html.substring(3, html.length - 4);
+    }
+    return html.replace(/FLAT_WYSIWYG_CONTENT_PLACEHOLDER/g, content);
+  };
+}
+
+/***/ }),
+
+/***/ "./src/forum/util/templateReplaceUtil.ts":
+/*!***********************************************!*\
+  !*** ./src/forum/util/templateReplaceUtil.ts ***!
+  \***********************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -4071,7 +4101,7 @@ function basicTemplates(document) {
     var smallTag = tag.toLowerCase();
     var template = document.createElement("xsl:template");
     template.setAttribute("match", "" + tag);
-    template.innerHTML = "<" + smallTag + " ><xsl:apply-templates/></" + smallTag + ">";
+    template.innerHTML = "<" + smallTag + "><xsl:apply-templates/></" + smallTag + ">";
     (_document$firstChild = document.firstChild) == null || _document$firstChild.appendChild(template);
   });
 }
