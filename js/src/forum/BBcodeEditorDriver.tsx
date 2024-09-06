@@ -8,10 +8,16 @@ import { type EditorDriverParams } from 'flarum/common/utils/EditorDriverInterfa
 
 import getTemplates, { Template } from './getTemplates';
 import { BindEvent, GlobalSCEditor, RangeHelper, SCEditor } from '../@types/sceditor';
+import { makeWrapTextarea } from './util/textareaStyler';
+
+const ORIGINAL_TAGS = ['b', 'i', 'u', 's', 'sub', 'sup', 'font', 'size', 'color', 'ul',
+  'list', 'ol', 'li', '*', 'table', 'tr', 'th', 'td', 'emoticon', 'hr', 'img', 'url',
+  'email', 'quote', 'code', 'left', 'center', 'right', 'justify', 'youtube', 'rtl', 'ltr'];
 
 export default class BBcodeEditorDriver implements EditorDriverInterface {
   el: HTMLTextAreaElement;
   tempEl: HTMLTextAreaElement;
+  _textarea: HTMLTextAreaElement;
   view: any = null;
   params: EditorDriverParams | null = null;
   instance: SCEditor | null = null;
@@ -22,10 +28,12 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
 
   constructor(dom: HTMLElement, params: EditorDriverParams) {
     //这里的EL应该是可以直接赋值的吧
-    this.el = this.tempEl = document.createElement('textarea');
+    this._textarea = this.tempEl = this.el = document.createElement('textarea');
     this.s9ePreview = document.createElement('div');
     this.extraBBcode = getTemplates();
     this.build(dom, params);
+    // 搞一个假的textarea
+    this.el = this.tempEl = makeWrapTextarea(this.tempEl, this.instance!);
   }
 
   build(dom: HTMLElement, params: EditorDriverParams) {
@@ -40,88 +48,44 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     dom.append(this.s9ePreview);
 
     this.params = params;
-    // @ts-ignore
     let sceditor = window.sceditor;
+    ORIGINAL_TAGS.forEach(tag => sceditor.formats.bbcode.remove(tag))
     this.extraBBcode.forEach((template) => {
       let name = template.name.toLowerCase();
-      if (sceditor.formats.bbcode.get(name) !== null) return;
-      if (name.indexOf('xsl:') > -1) return;
-      if (template.content.indexOf('xsl:') > -1) return;
-      console.log(template);
+      console.log("☘️Adding Template", name, template);
       sceditor.formats.bbcode.set(name, {
         tags: {
           [template.parentName]: {
-            class: null,
+            "data-template-match-name": template.name.toLowerCase(),
           },
         },
         allowsEmpty: true,
+        isSelfClosing: template.selfClose,
         format: function (elm: HTMLElement, content: string) {
-          if (elm.tagName.toLowerCase() === template.parentName) {
-            let hasAllClasses = template.parentClass.every((className: string) => elm.classList.contains(className));
-            if (!hasAllClasses) return content;
-            if (template.parentClass.length === 0 && template.parentName === 'div') return content;
-            if (template.content.indexOf(elm.outerHTML) > -1) return content;
-            if (template.attributes.length === 0 && template.parentName === 'div') return content;
-            let extractedValues = {} as any;
-
-            let matches = template.content.match(/\{@(.*?)\}/g) || [];
-            let start = 0;
-            let end = template.content.length;
-
-            matches.forEach((match: any, index: number) => {
-              let name = match.slice(2, -1);
-              let value = '';
-              let nextMatch = matches[index + 1] || null;
-              let nextMatchIndex = nextMatch ? template.content.indexOf(nextMatch) : template.content.length;
-              let temp1 = template.content.slice(start, template.content.indexOf(match));
-              let temp2 = template.content.slice(template.content.indexOf(match) + match.length, nextMatchIndex);
-              temp1 = temp1.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&').replace('\\/', '/');
-              temp2 = temp2.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&').replace('\\/', '/');
-              let temp = temp1 + '(.*?)' + temp2;
-              let content = elm.outerHTML;
-              let regex = new RegExp(temp, 'g');
-              let result = content.match(regex);
-              if (result) {
-                temp1 = temp1.replace(/\\/g, '');
-                temp2 = temp2.replace(/\\/g, '');
-                value = result[0].replace(temp1, '').replace(temp2, '');
-              }
-              extractedValues[name] = value;
-              start = template.content.indexOf(match) + match.length;
-              end = nextMatchIndex;
-            });
-
-            if (extractedValues['Tcontent']) {
-              content = extractedValues['Tcontent'];
-              content = content.replace(/<[^>]+>/g, '');
-              delete extractedValues['Tcontent'];
-            } else {
-              content = elm.innerText;
+          console.log("✨H->B", elm, content);
+          if (elm.getAttribute('data-template-match-name') === template.name.toLowerCase()) {
+            const attributes = template.matching.matchAttributes(elm);
+            if (attributes === false) {
+              return content;
             }
-            let attrStr = '';
-            for (let key in extractedValues) {
-              if (extractedValues[key]) {
-                attrStr += ' ' + key + '="' + extractedValues[key] + '"';
-              }
-            }
-            if (content === '') {
-              if (name === 'clip') return '';
-              return '[' + name + attrStr + ']';
-            }
-            return '[' + name + attrStr + ']' + content + '[/' + name + ']';
+            const attributeStr = Object.keys(attributes).filter(k => k != "@template").map((key: string) => `${key}=${attributes[key]}`).join(' ');
+            const closingTag = template.selfClose ? '' : `[/${template.name.toUpperCase()}]`;
+            attributes['@template'] = content;
+            return `[${template.name.toUpperCase()} ${attributeStr}]${attributes['@template'] || ""}${closingTag}`;
           }
           return content;
         },
-        html: function (token: any, attrs: any, content: string) {
-          let val = token.val + content;
+        html: (token: any, attrs: any, content: string) => {
+          console.log("🎈B->H", token, content);
+          let val = token.val + "FLAT_WYSIWYG_CONTENT_PLACEHOLDER";
           if (token.closing?.val) {
             val += token.closing.val;
           }
           // @ts-ignore
           s9e.TextFormatter.preview(val, $('.bbcode-editor-preview')[0]);
-          let html = $('.bbcode-editor-preview')[0].innerHTML;
-          $('.bbcode-editor-preview')[0].innerHTML = '';
-          return html;
+          let html = $(this.s9ePreview).first().children().first().html();
+          $(this.s9ePreview).html("");
+          return html.replace(/FLAT_WYSIWYG_CONTENT_PLACEHOLDER/g, content);
         },
       });
     });
@@ -153,8 +117,6 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
 
     let iframe = this.instance.getContentAreaContainer() as HTMLIFrameElement;
     let parent = iframe.parentElement;
-    this.el = parent!.querySelector('textarea') as HTMLTextAreaElement;
-
     const callInputListeners = (e: Event) => {
       this.params?.inputListeners.forEach((listener: any) => {
         listener.call(iframe);
@@ -219,7 +181,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
    */
   getLastNChars(n: number) {
     const value = this.instance!.val();
-    console.log(value);
+    // console.log(value);
 
     return value.slice(Math.max(0, this.getSelectionRange()[0] - n), this.getSelectionRange()[0]);
   }
