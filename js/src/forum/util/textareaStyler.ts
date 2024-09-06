@@ -30,8 +30,9 @@ export function makeWrapTextarea(textarea: HTMLTextAreaElement, editor: SCEditor
         set(target, prop, value) {
             if (prop === 'value') {
                 target.value = value;
-                if (!editor.sourceMode())
+                if (!editor.sourceMode()) {
                     editor.val(value, true);
+                }
             }
             return Reflect.set(target, prop, value);
         }

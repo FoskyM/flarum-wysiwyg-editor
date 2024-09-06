@@ -3225,14 +3225,49 @@ var IfContext = /*#__PURE__*/function () {
     this.debug = gdebug++;
     this.attributes = {};
     this.rejected = false;
+    this.beforeTemplate = true;
+    this.templatePattenBefore = [];
+    this.templatePattenAfter = [];
   }
   var _proto = IfContext.prototype;
+  _proto.content = function content(_content) {
+    if (this.beforeTemplate) {
+      this.templatePattenBefore.push(_content);
+    } else {
+      this.templatePattenAfter.push(_content);
+    }
+  };
+  _proto.patten = function patten() {
+    return "^" + this.templatePattenBefore.map(function (s) {
+      return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }).join("\\s*?") + "([^]*)" + this.templatePattenAfter.map(function (s) {
+      return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }).join("\\s*?");
+  };
   _proto.merge = function merge(newContext) {
     var _this = this;
     if (newContext.isRejected()) return;
     Object.keys(newContext.attributes).forEach(function (key) {
       _this.attributes[key] = newContext.attributes[key];
     });
+    if (this.beforeTemplate) {
+      newContext.templatePattenBefore.forEach(function (t) {
+        return _this.templatePattenBefore.push(t);
+      });
+      if (!newContext.beforeTemplate) {
+        newContext.templatePattenAfter.forEach(function (t) {
+          return _this.templatePattenAfter.push(t);
+        });
+        this.beforeTemplate = false;
+      }
+    } else {
+      newContext.templatePattenBefore.forEach(function (t) {
+        return _this.templatePattenAfter.push(t);
+      });
+      newContext.templatePattenAfter.forEach(function (t) {
+        return _this.templatePattenAfter.push(t);
+      });
+    }
   };
   _proto.attr = function attr(name) {
     return this.attributes[name];
@@ -3291,6 +3326,7 @@ var XSLTMatchUtil = /*#__PURE__*/function () {
     var context = new IfContext();
     this.match(node, this.template.firstChild, context);
     if (context.isRejected()) return false;
+    context.setAttr("@patten", context.patten());
     return context.attributes;
   };
   _proto2.match = function match(root, templateRoot, context, skipChildren) {
@@ -3446,10 +3482,13 @@ var XSLTMatchUtil = /*#__PURE__*/function () {
               _newRootChild.shift();
               _newTemplateChild.shift();
             }
+            context.content(templateContent);
             this.processChildren(_newRootChild, _newTemplateChild, _newRootIndex, _newTemplateIndex, context);
           } else {
             context.reject();
           }
+        } else {
+          context.content(rootContent);
         }
       } else {
         //检查元素是否匹配，否：拒绝当前context并返回
@@ -3497,10 +3536,12 @@ var XSLTMatchUtil = /*#__PURE__*/function () {
       if (_match) {
         context.setAttr(_match[1], extract_text(root));
       }
+      context.content(extract_text(root));
       //对于这个自闭合标签，我们不需要再处理其子节点
       return false;
     }
     if (nodeName == 'xsl:apply-templates') {
+      context.beforeTemplate = false;
       context.setAttr('@template', extract_text(root));
       //模板标签不需要处理子节点
       return false;
@@ -3949,7 +3990,9 @@ function closeTest(tagName) {
   if (testClose.replace("<e>[/" + tagName + "]</e>", "") !== testOpen) return true;
   return false;
 }
+var specialTags = ["TABLE", "THEAD", "TH", "TR", "TD", "TBODY"];
 function isBB(tagName) {
+  if (specialTags.includes(tagName.toUpperCase())) return true;
   //@ts-ignore
   var tagDef = s9e.TextFormatter.tagsConfig[tagName.toUpperCase()];
   if (!tagDef) return false;
@@ -4036,13 +4079,14 @@ function format(template) {
         return content;
       }
       var attributeStr = Object.keys(attributes).filter(function (k) {
-        return k != "@template";
+        return k != "@template" && k != "@patten";
       }).map(function (key) {
         return key + "=" + attributes[key];
       }).join(' ');
       var closingTag = template.selfClose ? '' : "[/" + template.name.toUpperCase() + "]";
-      DEBUG && console.log("✅Match", attributes, content);
+      content = (new RegExp(attributes['@patten'], 'img').exec(content) || ["", content])[1] || "";
       attributes['@template'] = content;
+      DEBUG && console.log("✅Match", attributes, content);
       return "[" + template.name.toUpperCase() + " " + attributeStr + "]" + (attributes['@template'] || "") + closingTag;
     }
     DEBUG && console.log("❓Missing tag", content);
@@ -4098,6 +4142,7 @@ var basicTags = "B|DEL|EM|H1|H2|H3|H4|H5|H6|I|INS|LI|S|STRONG|SUB|SUP|TABLE|TBOD
 function basicTemplates(document) {
   return basicTags.split("|").map(function (tag) {
     var _document$firstChild;
+    if (tag == 'p') return;
     var smallTag = tag.toLowerCase();
     var template = document.createElement("xsl:template");
     template.setAttribute("match", "" + tag);
@@ -4157,7 +4202,9 @@ function makeWrapTextarea(textarea, editor) {
     set: function set(target, prop, value) {
       if (prop === 'value') {
         target.value = value;
-        if (!editor.sourceMode()) editor.val(value, true);
+        if (!editor.sourceMode()) {
+          editor.val(value, true);
+        }
       }
       return Reflect.set(target, prop, value);
     }

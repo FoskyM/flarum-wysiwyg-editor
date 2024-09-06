@@ -26,7 +26,9 @@ function closeTest(tagName: string) {
   return false;
 }
 
+const specialTags = ["TABLE", "THEAD", "TH", "TR", "TD", "TBODY"];
 function isBB(tagName: string) {
+  if (specialTags.includes(tagName.toUpperCase())) return true;
   //@ts-ignore
   const tagDef: any = s9e.TextFormatter.tagsConfig[tagName.toUpperCase()];
   if (!tagDef) return false;
