@@ -5,21 +5,21 @@ class IfContext {
     rejected: boolean = false;
     beforeTemplate: boolean = true;
 
-    templatePattenBefore: string[] = [];
-    templatePattenAfter: string[] = [];
+    templatePatternBefore: string[] = [];
+    templatePatternAfter: string[] = [];
 
     content(content: string) {
         if (this.beforeTemplate) {
-            this.templatePattenBefore.push(content);
+            this.templatePatternBefore.push(content);
         } else {
-            this.templatePattenAfter.push(content);
+            this.templatePatternAfter.push(content);
         }
     }
-    patten() {
+    pattern() {
         return "^" +
-            this.templatePattenBefore.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*?") +
+            this.templatePatternBefore.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*?") +
             "([^]*)" +
-            this.templatePattenAfter.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*?");
+            this.templatePatternAfter.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*?");
     }
     merge(newContext: IfContext) {
         if (newContext.isRejected()) return
@@ -28,14 +28,14 @@ class IfContext {
         });
 
         if (this.beforeTemplate) {
-            newContext.templatePattenBefore.forEach(t => this.templatePattenBefore.push(t));
+            newContext.templatePatternBefore.forEach(t => this.templatePatternBefore.push(t));
             if (!newContext.beforeTemplate) {
-                newContext.templatePattenAfter.forEach(t => this.templatePattenAfter.push(t));
+                newContext.templatePatternAfter.forEach(t => this.templatePatternAfter.push(t));
                 this.beforeTemplate = false;
             }
         } else {
-            newContext.templatePattenBefore.forEach(t => this.templatePattenAfter.push(t));
-            newContext.templatePattenAfter.forEach(t => this.templatePattenAfter.push(t));
+            newContext.templatePatternBefore.forEach(t => this.templatePatternAfter.push(t));
+            newContext.templatePatternAfter.forEach(t => this.templatePatternAfter.push(t));
         }
     }
     attr(name: string) {
@@ -96,7 +96,7 @@ export default class XSLTMatchUtil {
         const context = new IfContext();
         this.match(node, this.template.firstChild as HTMLElement, context);
         if (context.isRejected()) return false;
-        context.setAttr("@patten", context.patten());
+        context.setAttr("@pattern", context.pattern());
         return context.attributes;
     }
     match(root: HTMLElement, templateRoot: HTMLElement, context: IfContext, skipChildren: boolean = false): any {
