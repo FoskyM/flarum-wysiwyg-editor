@@ -10,6 +10,7 @@ import getTemplates, { Template } from './getTemplates';
 import { BindEvent, GlobalSCEditor, RangeHelper, SCEditor } from '../@types/sceditor';
 import { makeWrapTextarea } from './util/textareaStyler';
 import { format, html } from './util/bbcodeFormatUtil';
+import { handleShortcuts } from './util/shortcutHandleUtil';
 
 const ORIGINAL_TAGS = ['b', 'i', 'u', 's', 'sub', 'sup', 'font', 'size', 'color', 'ul',
   'list', 'ol', 'li', '*', 'table', 'tr', 'th', 'td', 'emoticon', 'hr', 'img', 'url',
@@ -28,7 +29,6 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
   s9ePreview: HTMLDivElement;
 
   constructor(dom: HTMLElement, params: EditorDriverParams) {
-    //这里的EL应该是可以直接赋值的吧
     this._textarea = this.tempEl = this.el = document.createElement('textarea');
     this.s9ePreview = document.createElement('div');
     this.extraBBcode = getTemplates();
@@ -79,6 +79,7 @@ export default class BBcodeEditorDriver implements EditorDriverInterface {
     });
     this.editor = sceditor;
     this.instance = sceditor.instance(this.tempEl);
+    handleShortcuts(this.instance);
     this.rangeHelper = this.instance.getRangeHelper();
 
     const cssClasses = params.classNames || [];
