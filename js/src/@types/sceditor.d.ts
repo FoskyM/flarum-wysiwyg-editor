@@ -147,7 +147,7 @@ type SCEditorOptions = Partial<{
   autoUpdate: boolean,
   runWithoutWysiwygSupport: boolean,
   id: string,
-  plugins: boolean,
+  plugins: string,
   spellcheck: boolean,
   disableBlockRemove: boolean,
   parserOptions: ParserOptions,
@@ -338,7 +338,7 @@ interface SCEditor {
    * Info: Using the val() method is the preferred way of getting the editors value. It will check if the editor is in WYSIWYG or source mode and return the appropriate value.
    * @param filter If to filter the value through the current format. Will cause the HTML to be converted to BBCode if using the BBCode format.
    */
-  getWysiwygEditorValue(filter: boolean): string;
+  getWysiwygEditorValue(filter?: boolean): string;
 
   /**
    * Gets the current height of the editor in px.

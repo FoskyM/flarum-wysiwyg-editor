@@ -33,6 +33,13 @@ export function makeWrapTextarea(textarea: HTMLTextAreaElement, editor: SCEditor
                 if (!editor.sourceMode()) {
                     editor.val(value, true);
                 }
+                // textarea undo history
+                let event = new CompositionEvent('compositionend', {
+                    bubbles: true,
+                    cancelable: true,
+                    data: value
+                });
+                target.dispatchEvent(event);
             }
             return Reflect.set(target, prop, value);
         }
